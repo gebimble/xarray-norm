@@ -15,7 +15,9 @@ def radial_norm(ds1, ds2, datavar_name):
     return ds1, ds2.assign(**{datavar_name: ratio * ds2[datavar_name]}), ratio
 
 
-def axial_norm(ds1, ds2, datavar_name, dim, method='relative-integral'):
+def axial_norm(ds1, ds2,
+               datavar_name='value', dim='z',
+               method='relative-integral'):
 
     if method == 'relative-integral':
         ds1_norm, ds2_norm = [
@@ -23,14 +25,21 @@ def axial_norm(ds1, ds2, datavar_name, dim, method='relative-integral'):
             for x in (ds1, ds2)
         ]
 
+    if method == 'peak-integral':
+        ds1_norm, ds2_norm = [
+            x[datavar_name].integrate(dim).max() / np.ptp(x[dim].values)
+            for x in (ds1, ds2)
+        ]
+
+    if method == 'relative-peak':
+        ds1_norm, ds2_norm = [
+            x[datavar_name].max(dim=dim) for x in (ds1, ds2)
+        ]
+
     if method == 'peak':
         ds1_norm, ds2_norm = [
             x[datavar_name].max() for x in (ds1, ds2)
         ]
-
-    if method == 'max-integral':
-        NotImplemented
-
 
     ratio = ds1_norm / ds2_norm
 
