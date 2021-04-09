@@ -1,0 +1,3 @@
+/.vim/
+/.pytest_cache
+*.pyc
