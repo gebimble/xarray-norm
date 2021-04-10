@@ -2,14 +2,10 @@
 <project version="4">
   <component name="ChangeListManager">
     <list default="true" id="8cd0598b-dc6a-4457-b1f6-87aad71f5205" name="Default Changelist" comment="">
-      <change afterPath="$PROJECT_DIR$/.idea/csv-plugin.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/inspectionProfiles/profiles_settings.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/modules.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/.idea/xarray_norm.iml" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/tests/test_align.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_align.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_align.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/tests/test_xarray_norm.py" beforeDir="false" afterPath="$PROJECT_DIR$/tests/test_xarray_norm.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/toys/optimise.py" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/toys/xarray_norm.py" beforeDir="false" afterPath="$PROJECT_DIR$/toys/xarray_norm.py" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />

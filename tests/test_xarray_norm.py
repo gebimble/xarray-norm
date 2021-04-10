@@ -1,11 +1,12 @@
 import pytest
 
 import numpy as np
+import xarray as xr
 
-import matplotlib.pyplot as plt
+from scipy.stats import beta, lognorm
 
 from toys import __version__
-from toys.xarray_norm import radial_norm, axial_norm
+from toys.xarray_norm import radial_norm, axial_norm, align
 
 
 def test_version():
@@ -307,3 +308,169 @@ def test_axial_norm_relative_peak_multiple_loc(datasets):
 
     assert (nds1_vals == dataset1['value']/dataset1['value'].max(dim='z')).all()
     assert (nds2_vals == dataset2['value']/dataset2['value'].max(dim='z')).all()
+
+
+def test_align_1d():
+    a = b = 0.5
+    offset = 0.3
+
+    sl = slice(2, -3)
+
+    x = np.linspace(beta.ppf(0.01, a, b),
+                    beta.ppf(0.99, a, b), 100)
+    x_trim = x[sl] + offset
+
+    y1 = beta.pdf(x, 0.5, 0.5) + 20 * lognorm.pdf(x * 2, 1)
+
+    def make_noisy_data(y1):
+        y2 = np.random.uniform(0, 0.5, (100,)) + y1
+        y2 = y2[sl]
+        return y2
+
+    y2 = make_noisy_data(y1)
+
+    def make_new_garbled_data(x_trim, y2):
+        new_x_trim = np.sort(
+            np.random.uniform(x_trim[0], x_trim[-1], int(len(x_trim) / 2)))
+        new_y2 = np.interp(new_x_trim, x_trim, y2)
+        return new_x_trim, new_y2
+
+    new_x_trim, new_y2 = make_new_garbled_data(x_trim, y2)
+
+    dsa = xr.Dataset(
+        data_vars=dict(value=(['x', 'y', 'z', 't'], new_y2.reshape(
+            1, 1, new_y2.shape[0], 1))),
+        coords=dict(x=(['x'], [0]), y=(['y'], [0]), t=(['t'], [0]),
+                    z=(['z'], new_x_trim)))
+
+    dsb = xr.Dataset(data_vars=dict(value=(['x', 'y', 'z', 't'], y1.reshape(
+        1, 1, y1.shape[0], 1))),
+                     coords=dict(x=(['x'], [0]), y=(['y'], [0]),
+                                 t=(['t'], [0]),
+                                 z=(['z'], x)))
+
+    dsa, dsb, res = align(dsa, dsb)
+
+    assert -res.x == pytest.approx(offset, rel=1e-1)
+
+
+def test_align_2d():
+    a = b = 0.5
+    offset = 0.3
+
+    sl = slice(2, -3)
+
+    x = np.linspace(beta.ppf(0.01, a, b),
+                    beta.ppf(0.99, a, b), 100)
+    x_trim = x[sl] + offset
+
+    y1 = beta.pdf(x, 0.5, 0.5) + 20 * lognorm.pdf(x * 2, 1)
+
+    def make_noisy_data(y1):
+        y2 = np.random.uniform(0, 0.5, (100,)) + y1
+        y2 = y2[sl]
+        return y2
+
+    y21 = make_noisy_data(y1)
+    y22 = make_noisy_data(y1)
+
+    def make_new_xtrim(x_trim):
+        return np.sort(np.random.uniform(x_trim[0], x_trim[-1], int(len(x_trim) / 2)))
+
+    def make_new_ytrim(new_x_trim, x_trim, y2):
+        return np.interp(new_x_trim, x_trim, y2)
+
+    new_x_trim = make_new_xtrim(x_trim)
+
+    new_y21 = make_new_ytrim(new_x_trim, x_trim, y21)
+    new_y22 = make_new_ytrim(new_x_trim, x_trim, y22)
+
+    dsa = xr.Dataset(
+        data_vars=dict(
+            value=(['x', 'y', 'z', 't'],
+                   np.vstack([new_y21, new_y22]).reshape(2, 1, new_y21.shape[0], 1))
+        ),
+        coords=dict(x=(['x'], [-.5, .5]),
+                    y=(['y'], [0]),
+                    t=(['t'], [0]),
+                    z=(['z'], new_x_trim)))
+
+    dsb = xr.Dataset(
+        data_vars=dict(
+            value=(['x', 'y', 'z', 't'],
+                   np.vstack([y21, y22]).reshape(2, 1, y21.shape[0], 1))
+        ),
+        coords=dict(x=(['x'], [-.5, .5]),
+                    y=(['y'], [0]),
+                    t=(['t'], [0]),
+                    z=(['z'], x[sl])))
+
+    dsa, dsb, res = align(dsa, dsb)
+
+    assert -res.x == pytest.approx(offset, rel=1e-1)
+
+
+def test_align_3d():
+    a = b = 0.5
+    offset = 0.3
+
+    sl = slice(2, -3)
+
+    x = np.linspace(beta.ppf(0.01, a, b),
+                    beta.ppf(0.99, a, b), 100)
+    x_trim = x[sl] + offset
+
+    y1 = beta.pdf(x, 0.5, 0.5) + 20 * lognorm.pdf(x * 2, 1)
+
+    def make_noisy_data(y1):
+        y2 = np.random.uniform(0, 0.5, (100,)) + y1
+        y2 = y2[sl]
+        return y2
+
+    y21 = make_noisy_data(y1)
+    y22 = make_noisy_data(y1)
+    y23 = make_noisy_data(y1)
+    y24 = make_noisy_data(y1)
+
+    def make_new_xtrim(x_trim):
+        return np.sort(np.random.uniform(x_trim[0], x_trim[-1], int(len(x_trim) / 2)))
+
+    def make_new_ytrim(new_x_trim, x_trim, y2):
+        return np.interp(new_x_trim, x_trim, y2)
+
+    new_x_trim = make_new_xtrim(x_trim)
+
+    new_y21 = make_new_ytrim(new_x_trim, x_trim, y21)
+    new_y22 = make_new_ytrim(new_x_trim, x_trim, y22)
+    new_y23 = make_new_ytrim(new_x_trim, x_trim, y23)
+    new_y24 = make_new_ytrim(new_x_trim, x_trim, y24)
+
+    dsa = xr.Dataset(
+        data_vars=dict(
+            value=(['x', 'y', 'z', 't'],
+                   np.vstack([new_y21,
+                              new_y22,
+                              new_y23,
+                              new_y24]).reshape(2, 2, new_y21.shape[0], 1))
+        ),
+        coords=dict(x=(['x'], [-.5, .5]),
+                    y=(['y'], [-.5, .5]),
+                    t=(['t'], [0]),
+                    z=(['z'], new_x_trim)))
+
+    dsb = xr.Dataset(
+        data_vars=dict(
+            value=(['x', 'y', 'z', 't'],
+                   np.vstack([y21,
+                              y22,
+                              y23,
+                              y24]).reshape(2, 2, y21.shape[0], 1))
+        ),
+        coords=dict(x=(['x'], [-.5, .5]),
+                    y=(['y'], [-.5, .5]),
+                    t=(['t'], [0]),
+                    z=(['z'], x[sl])))
+
+    dsa, dsb, res = align(dsa, dsb)
+
+    assert -res.x == pytest.approx(offset, rel=1e-1)

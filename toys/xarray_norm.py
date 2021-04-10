@@ -1,14 +1,6 @@
-from functools import reduce
-
 import numpy as np
 
 from scipy.optimize import minimize
-from scipy.stats import chisquare
-
-import pandas as pd
-import xarray as xr
-
-import matplotlib.pyplot as plt
 
 
 def radial_norm(ds1, ds2, datavar_name):
@@ -51,53 +43,24 @@ def axial_norm(ds1, ds2,
     return new_ds1, new_ds2, ds1_norm, ds2_norm, ratio
 
 
-def align(exp, theory,
-          exp_trim=[None, None], theory_trim=[None, None],
-          datavar_name='value', dim='z', method='relative-integral'):
-
-    exp, theory = [ds.isel(**{dim: slice(*sl)})
-                   for ds, sl in zip((exp, theory),
-                                     (exp_trim, theory_trim))]
-
-    theory = theory.interp(exp.drop(['t', dim]).coords)  # get theory at the
-                                                         # exp locations
-
-    # reset exp heights by colocating the bottom of their z-axis
-    # exp = exp.assign(
-    #     **{
-    #         dim: exp[dim] - (exp[dim][0] - theory[dim][0])
-    #     }
-    # )
-
-    def min_chisq(ht, exp, th, datavar_name='value', dim='z'):
-        new_exp = exp.assign(
-            **{dim: exp[dim] + ht}
-        )
-
-        new_exp = new_exp.interp_like(th).where(np.isfinite(th[datavar_name]))
-
-        new_exp = reduce(lambda y, x: y.dropna(x, how='all'),
-                         ('x', 'y', 'z'),
-                         new_exp[datavar_name])
-        th = reduce(lambda y, x: y.dropna(x, how='all'),
-                    ('x', 'y', 'z'),
-                    th[datavar_name])
-
-        th = th.sel(z=new_exp['z'].values)
-
-        stack_dict = {'xy': ('x', 'y')}
-
-        chi_results = chisquare(new_exp.stack(stack_dict),
-                                th.stack(stack_dict),
-                                axis=0)[0]
+def trim_datasets(datasets, bounds, dim='z'):
+    return [ds.isel(**{dim: slice(*bd)}) for ds, bd in zip(datasets, bounds)]
 
 
-        chi_res_sum = chi_results[np.isfinite(chi_results)].sum()
-        print(chi_res_sum)
-        return chi_res_sum
+def align(to_align, align_to, var='value', dim='z'):
 
+    def min_chisq(shift, to_align, align_to, datavar='value', dim='z'):
+        new_exp = to_align.assign(**{dim: to_align[dim] + shift})
 
-    res = minimize(min_chisq, [0.], args=(exp, theory, datavar_name, dim),
-                   bounds=(np.array([-0.25, 0.25])*np.ptp(exp[dim].values),))
+        new_exp = new_exp.interp(**{dim: align_to[dim].values})
 
-    return res
+        return np.power(align_to[datavar] - new_exp[var], 2).sum()
+
+    res = minimize(
+        min_chisq, [0.], args=(to_align, align_to, var, dim),
+        bounds=(np.array([-0.5, 0.5]) * np.ptp(to_align[dim].values),)
+    )
+
+    aligned = to_align.assign_coords(**{dim: to_align[dim] + res.x})
+
+    return aligned, align_to, res
